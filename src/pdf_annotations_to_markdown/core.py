@@ -22,7 +22,7 @@ def extract_marked_text(page: fitz.Page, annot: fitz.Annot) -> str:
     quads = annot.vertices
 
     if quads is None:
-        return text_parts
+        return ""
 
     for i in range(0, len(quads), 4):
         if i + 3 >= len(quads):
