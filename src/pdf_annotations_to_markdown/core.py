@@ -5,16 +5,16 @@ from .constants import PDF_ANNOT_HIGHLIGHT, PDF_ANNOT_UNDERLINE, PDF_ANNOT_STRIK
 def extract_marked_text(page: fitz.Page, annot: fitz.Annot) -> str:
     """
     Extract the text content that was marked up (highlighted, underlined, or struck out) in a PDF annotation.
-    
+
     This function handles three types of marked annotations:
     - Highlights (PDF_ANNOT_HIGHLIGHT)
     - Underlines (PDF_ANNOT_UNDERLINE)
     - Strike-outs (PDF_ANNOT_STRIKE_OUT)
-    
+
     Parameters:
         page (fitz.Page): The PDF page object containing the annotation
         annot (fitz.Annot): The annotation object containing the marked
-        
+
     Returns:
         str: The extracted text content that was marked up, or None if no text could be extracted
     """
@@ -42,7 +42,7 @@ def extract_marked_text(page: fitz.Page, annot: fitz.Annot) -> str:
 def extract_annotations_dict(file_path: str) -> list[dict]:
     """
     Extract annotations from a PDF file and return them as a list of dictionaries.
-    
+
     Parameters:
         file_path (str): The path to the PDF file
 
@@ -65,7 +65,8 @@ def extract_annotations_dict(file_path: str) -> list[dict]:
                 "type": annot.type[1],
                 "type_id": annot.type[0],
                 "marked_text": marked,
-                "comment": content})
+                "comment": content,
+                "author": annot.info.get("title", "").strip() or None})
 
     return [a for a in annotations if a["comment"] or a["marked_text"]]
 
@@ -84,7 +85,7 @@ def format_quote(quote: str) -> str:
 def format_annotations(annotations: list[dict]) -> str:
     """
     Format annotations from a list of dictionaries into a formatted string.
-    
+
     Parameters:
         annotations (list[dict]): A list of dictionaries containing annotation information
 
@@ -112,4 +113,46 @@ def format_annotations(annotations: list[dict]) -> str:
             comment = ann['comment'].strip() if ann['comment'] else "—"
             lines.append(f"{comment}\n")
 
-    return "\n".join(lines) 
+    return "\n".join(lines)
+
+def format_annotations_by_author(annotations: list[dict]) -> str:
+    """
+    Format annotations grouped by their author into a Markdown string.
+
+    Authors are sorted alphabetically; within each author the annotations are
+    sorted by page. Annotations whose author is None are grouped under the
+    literal heading "Unattributed".
+
+    Parameters:
+        annotations (list[dict]): A list of annotation dictionaries as produced
+            by extract_annotations_dict()
+
+    Returns:
+        str: A formatted Markdown string grouped by author
+    """
+    lines = ["# Reviewer Comments and Annotations", ""]
+
+    grouped = defaultdict(list)
+    for ann in annotations:
+        author = ann.get("author") or "Unattributed"
+        grouped[author].append(ann)
+
+    for author in sorted(grouped.keys()):
+        lines.append(f"## {author}")
+
+        for ann in sorted(grouped[author], key=lambda a: a["page"]):
+            marked = ann.get("marked_text")
+            comment = ann.get("comment")
+
+            lines.append(f"- **p.{ann['page']}**" + (" — highlight:" if marked else ""))
+
+            if marked:
+                quoted = format_quote(marked)
+                lines.append("\n".join(f"  {line}" for line in quoted.split("\n")))
+
+            if comment:
+                lines.append(f"  - comment: {comment.strip()}")
+
+        lines.append("")
+
+    return "\n".join(lines).strip() + "\n"

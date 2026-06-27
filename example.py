@@ -1,4 +1,4 @@
-from src.pdf_annotations_to_markdown import extract_annotations_dict, format_annotations
+from pdf_annotations_to_markdown import extract_annotations_dict, format_annotations
 
 def main():
     # Replace with your PDF file path
